@@ -277,3 +277,174 @@ pip install -r requirements.txt
 ```shell
 python3 main.py
 ```
+
+## 可视化页面（Web UI）
+
+仓库新增了 `web_app.py`（Flask）+ `templates/`，可以在页面上直接输入步数并立即修改。
+**配置完全复用现有配置**：优先环境变量 `CONFIG`(JSON)，其次 `USER`+`PWD`，也支持根目录 `.env`；
+登录态依旧用 `AES_KEY` 加密保存在 `encrypted_tokens.data`。
+
+### 页面能力
+
+- 账号列表自动从配置读取并脱敏展示，可勾选要修改的账号，也可给单个账号单独指定步数（留空则跟随全局步数）
+- 步数模式：自定义步数 / 按时间随机（与定时任务逻辑一致，北京时间22点达到 `MAX_STEP`）
+- 多账号串行执行，间隔沿用配置中的 `SLEEP_GAP`，避免接口 429
+- 执行日志实时输出，执行完成后沿用 `AES_KEY` 加密保存登录态
+
+### 本地启动
+
+```shell
+pip install -r requirements.txt
+python3 web_app.py            # 默认 http://127.0.0.1:8888
+PORT=8080 python3 web_app.py  # 换端口
+```
+
+复制 `.env.example` 为 `.env` 后填写（字段与 `main.py` 完全一致，只多了可选的 `WEB_PASSWORD`）：
+
+```shell
+cp .env.example .env
+```
+
+```shell
+CONFIG={"USER":"abc@xx.com","PWD":"password","MIN_STEP":"18000","MAX_STEP":"25000","SLEEP_GAP":"5"}
+AES_KEY=1234567890abcdef
+WEB_PASSWORD=你的访问口令
+```
+
+> 公网部署请务必设置 `WEB_PASSWORD`，否则任何人打开页面就能改你的步数。未设置时页面不做登录校验，方便本地使用。
+> 页面只做步数修改，不会改动仓库里的定时任务；定时任务仍由 GitHub Actions 正常执行，两者共用同一份登录态文件。
+
+### 快速部署
+
+#### 1. 源码一键部署（推荐，服务器不需要 Docker）
+
+脚本会自动：安装 python3 依赖 → 同步代码 → 建虚拟环境 → 写 systemd 服务并开机自启。
+
+```shell
+# 在本机把仓库传到服务器（服务器上不需要 git）
+rsync -av --exclude '.git' --exclude 'venv' ./ root@服务器IP:/tmp/mimotion/
+
+# 登录服务器执行
+ssh root@服务器IP
+cd /tmp/mimotion
+cp .env.example .env && vi .env        # 填 CONFIG（或 USER/PWD）、AES_KEY、WEB_PASSWORD
+sudo ./deploy/install.sh               # 默认 /opt/mimotion，端口 8888
+# 自定义：sudo ./deploy/install.sh /opt/mimotion 9000
+```
+
+脚本结束会给出访问地址与常用命令：
+
+```shell
+systemctl status mimotion-web          # 查看状态
+journalctl -u mimotion-web -f          # 看实时日志
+systemctl restart mimotion-web         # 改完 .env 后重启
+```
+
+> 支持 Ubuntu / Debian / CentOS / RHEL，x86_64 与 ARM 都可用；服务由 `waitress` 提供，无需 gunicorn。
+> 记得在防火墙/云厂商安全组放行端口：`ufw allow 8888/tcp`。
+
+#### 2. Docker Compose（服务器已装 Docker 时，含登录态持久化）
+
+```shell
+cp .env.example .env && vi .env
+docker compose up -d --build
+# 访问 http://服务器IP:5000 ，改端口改 docker-compose.yml 里的 "5000:5000" 左侧
+docker compose logs -f
+```
+
+#### 3. 纯 Docker
+
+```shell
+docker build -t mimotion-web .
+docker run -d --name mimotion-web --restart unless-stopped \
+  -p 5000:5000 --env-file .env \
+  -v $(pwd)/encrypted_tokens.data:/app/encrypted_tokens.data \
+  mimotion-web
+```
+
+#### 4. Render / Railway / Koyeb / Heroku 等 PaaS
+
+仓库已带 `Procfile`，直接新建 Web Service 并关联仓库即可（启动命令 `gunicorn web_app:app`）。
+在平台的环境变量里配置 `CONFIG`（或 `USER`/`PWD`）、`AES_KEY`、`WEB_PASSWORD`。
+
+> 注意：这类平台容器重启后文件系统会重置，`encrypted_tokens.data` 会丢失，程序会自动重新登录，不影响使用；
+> 如需保留登录态请用 Docker 方式并挂载该文件。
+
+#### 5. 可选：打包成单个二进制（服务器连 Python 都不想装时）
+
+可视化页面可以打成**一个独立可执行文件**，拷上去直接跑。
+
+```shell
+# 方式一：在 Linux 服务器上直接打包（Mac 没有 Docker 时用这个，架构/glibc 天然匹配）
+#         打包期间临时需要 python3，打完之后产物独立运行，可卸载 Python
+./build.sh
+
+# 方式二：本机有 Docker 时，用它打出 Linux x86_64 产物
+./build.sh docker
+# 产物在 dist/mimotion-web，约 20~30MB
+```
+
+> PyInstaller 不支持交叉编译，Linux 二进制必须在 Linux 环境里产出：
+> 没有 Docker 就把仓库传到服务器跑 `./build.sh`，或在 GitHub Actions 里构建（两者都不需要本地装任何东西）。
+
+拷到服务器运行：
+
+```shell
+scp dist/mimotion-web root@你的服务器:/opt/mimotion/
+# 服务器上：把 .env 放到 /opt/mimotion/.env（CONFIG / AES_KEY / WEB_PASSWORD 等）
+mkdir -p /opt/mimotion && cd /opt/mimotion
+PORT=8888 ./mimotion-web
+```
+
+配置项（都是环境变量，也可写进同目录的 `.env`）：
+
+| 变量 | 说明 |
+|---|---|
+| `PORT` | 监听端口，默认 `8888` |
+| `HOST` | 监听地址，默认 `0.0.0.0` |
+| `DATA_DIR` | 配置与登录态存放目录，设置后程序的 `.env`、`encrypted_tokens.data` 都读写这个目录（服务化部署建议设置） |
+| `WEB_PASSWORD` | 访问口令，公网部署必填 |
+
+systemd 常驻示例（`/etc/systemd/system/mimotion-web.service`）：
+
+```ini
+[Unit]
+Description=mimotion web
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/mimotion
+Environment=PORT=8888
+Environment=DATA_DIR=/opt/mimotion
+Environment=WEB_PASSWORD=你的访问口令
+ExecStart=/opt/mimotion/mimotion-web
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```shell
+systemctl daemon-reload && systemctl enable --now mimotion-web
+journalctl -u mimotion-web -f
+```
+
+二进制部署注意事项：
+
+- **不能跨平台打包**：Linux 服务器请用 `./build.sh docker`；Windows 上本地打包需手动执行 `pyinstaller --onefile --add-data "templates;templates" ...`
+- 产物基于 Debian bullseye（glibc 2.31），Ubuntu 20.04+ / Debian 11+ / CentOS 8+ 可直接运行；更老的系统（如 CentOS 7）请用 Docker 部署
+- 单文件启动时会先解压到临时目录，首次启动约 1~3 秒，属正常现象
+- 账号密码不会打进二进制里，全部来自环境变量/`.env`，换机器只需拷二进制 + `.env`
+
+### 部署相关环境变量
+
+| 变量 | 说明 |
+|---|---|
+| `PORT` | 监听端口，源码直跑默认 `8888`，Docker 内固定 `5000` |
+| `HOST` | 监听地址，默认 `0.0.0.0` |
+| `DATA_DIR` | 配置与登录态存放目录，设置后 `.env`、`encrypted_tokens.data` 都读写该目录（systemd 部署脚本已自动设置） |
+| `WEB_PASSWORD` | 页面访问口令，公网部署必填；不设置则不做登录校验 |
+
+健康检查接口：`GET /healthz`（Docker Compose 已内置该检查）。

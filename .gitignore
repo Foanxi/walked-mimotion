@@ -1,3 +1,11 @@
 /.idea/
 __pycache__/
 .env
+
+# 可视化页面打包产物
+/build/
+/dist/
+/.build-venv/
+/venv/
+*.spec
+/smoke.log

@@ -2,3 +2,7 @@ requests
 pytz
 pycryptodome
 python-dotenv
+# 可视化页面 web_app.py 的依赖
+flask>=2.3
+gunicorn>=21.2
+waitress>=2.1

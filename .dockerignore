@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+.build-venv/
+build/
+dist/
+deploy/
+*.spec
+smoke.log
+.git/
+.github/
+.idea/
+.env
+*.log
+crontab/

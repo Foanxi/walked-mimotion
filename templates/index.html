@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>mimotion · 步数修改</title>
+    <style>
+        :root {
+            --bg: #f4f6fb;
+            --card: #ffffff;
+            --line: #e6e9f2;
+            --text: #1f2430;
+            --muted: #7b8499;
+            --brand: #4f46e5;
+            --brand-soft: #eef0ff;
+            --ok: #16a34a;
+            --err: #dc2626;
+            --warn: #d97706;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+
+        .wrap { max-width: 880px; margin: 0 auto; padding: 24px 16px 64px; }
+
+        .hero {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: #fff;
+            border-radius: 16px;
+            padding: 22px 24px;
+            box-shadow: 0 10px 30px rgba(79, 70, 229, .25);
+        }
+
+        .hero h1 { margin: 0 0 6px; font-size: 20px; }
+
+        .hero .sub { opacity: .85; font-size: 13px; }
+
+        .meta { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+        .badge {
+            background: rgba(255, 255, 255, .18);
+            border: 1px solid rgba(255, 255, 255, .28);
+            border-radius: 999px;
+            padding: 3px 12px;
+            font-size: 12px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-top: 16px;
+            box-shadow: 0 2px 10px rgba(31, 36, 48, .04);
+        }
+
+        .card h2 { margin: 0 0 4px; font-size: 15px; }
+
+        .card .desc { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+
+        .accounts { display: flex; flex-direction: column; gap: 8px; }
+
+        .acct {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: .15s;
+        }
+
+        .acct:hover { border-color: #c7cbf5; background: #fbfbff; }
+
+        .acct.checked { border-color: var(--brand); background: var(--brand-soft); }
+
+        .acct .name { font-weight: 600; flex: 1; word-break: break-all; }
+
+        .acct .idx { color: var(--muted); font-size: 12px; }
+
+        .acct input[type="number"] {
+            width: 120px;
+            padding: 6px 8px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 13px;
+            text-align: right;
+        }
+
+        .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+        .field { display: flex; flex-direction: column; gap: 6px; }
+
+        .field label { font-size: 12px; color: var(--muted); }
+
+        input.step-input {
+            width: 200px;
+            padding: 10px 12px;
+            font-size: 16px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            outline: none;
+        }
+
+        input.step-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+
+        .quick { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+        .chip {
+            border: 1px solid var(--line);
+            background: #fff;
+            border-radius: 999px;
+            padding: 5px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--text);
+        }
+
+        .chip:hover { border-color: var(--brand); color: var(--brand); }
+
+        .modes { display: flex; gap: 16px; margin-bottom: 14px; font-size: 13px; }
+
+        .btn {
+            background: var(--brand);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 22px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 6px 16px rgba(79, 70, 229, .3);
+        }
+
+        .btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+
+        .btn.ghost {
+            background: #fff;
+            color: var(--text);
+            border: 1px solid var(--line);
+            box-shadow: none;
+            font-weight: 500;
+            padding: 8px 14px;
+            font-size: 13px;
+        }
+
+        .hint { color: var(--muted); font-size: 12px; margin-top: 10px; }
+
+        .alert {
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            margin-bottom: 14px;
+            border: 1px solid;
+        }
+
+        .alert.err { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+        .alert.warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+
+        .log {
+            margin: 12px 0 0;
+            background: #0f1420;
+            color: #d7dced;
+            border-radius: 10px;
+            padding: 14px;
+            max-height: 320px;
+            overflow: auto;
+            font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .log .l-success { color: #4ade80; }
+        .log .l-error { color: #f87171; }
+        .log .l-info { color: #a5b4fc; }
+
+        .summary { margin-top: 10px; font-weight: 600; }
+
+        .summary.ok { color: var(--ok); }
+        .summary.bad { color: var(--err); }
+
+        .spacer { height: 8px; }
+
+        .link { color: #fff; opacity: .8; cursor: pointer; text-decoration: underline; font-size: 12px; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="hero">
+        <h1>mimotion 步数修改</h1>
+        <div class="sub">复用仓库现有配置（CONFIG / USER+PWD / .env），输入步数后一键同步到 Zepp Life</div>
+        <div class="meta">
+            <span class="badge" id="b-source">配置来源：加载中</span>
+            <span class="badge" id="b-time">--</span>
+            <span class="badge" id="b-token">登录态加密：--</span>
+            {% if need_password %}<a class="link" href="/login">退出登录</a>{% endif %}
+        </div>
+    </div>
+
+    <div id="banner"></div>
+
+    <section class="card">
+        <h2>1 · 选择账号</h2>
+        <div class="desc">账号已脱敏展示；右侧可单独指定步数，留空则使用下方全局步数。</div>
+        <div class="accounts" id="accounts"></div>
+        <div class="quick">
+            <button class="chip" data-select="all">全选</button>
+            <button class="chip" data-select="none">全不选</button>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>2 · 设置步数</h2>
+        <div class="modes">
+            <label><input type="radio" name="mode" value="custom" checked> 自定义步数</label>
+            <label><input type="radio" name="mode" value="auto"> 按时间随机（与定时执行一致）</label>
+        </div>
+        <div class="field" id="custom-area">
+            <label for="global-step">全局步数</label>
+            <input class="step-input" id="global-step" type="number" min="1" step="1" value="18000"/>
+        </div>
+        <div class="quick">
+            <button class="chip" data-step="1000">1,000</button>
+            <button class="chip" data-step="5000">5,000</button>
+            <button class="chip" data-step="10000">10,000</button>
+            <button class="chip" data-step="20000">20,000</button>
+            <button class="chip" id="rand-step">随机一个</button>
+        </div>
+        <div class="hint" id="range-hint"></div>
+    </section>
+
+    <section class="card">
+        <h2>3 · 执行</h2>
+        <div class="row">
+            <button class="btn" id="run">立即修改步数</button>
+            <button class="btn ghost" id="clear">清空日志</button>
+        </div>
+        <div class="summary" id="summary"></div>
+        <pre class="log" id="log"></pre>
+    </section>
+</div>
+
+<script>
+    const $ = (s) => document.querySelector(s);
+    const state = { jobId: null, rendered: 0, running: false, accounts: [] };
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+    }
+
+    async function api(url, options) {
+        const res = await fetch(url, options);
+        if (res.status === 401) {
+            location.href = '/login';
+            throw new Error('unauthorized');
+        }
+        return res.json();
+    }
+
+    function renderAccounts(accounts) {
+        state.accounts = accounts;
+        const box = $('#accounts');
+        if (!accounts.length) {
+            box.innerHTML = '<div class="hint">未读取到账号，请检查 CONFIG / USER 配置</div>';
+            return;
+        }
+        box.innerHTML = accounts.map((a) => `
+            <label class="acct checked" data-row="${a.index}">
+                <input type="checkbox" checked data-idx="${a.index}"/>
+                <span class="idx">#${a.index + 1}</span>
+                <span class="name">${escapeHtml(a.name)}${a.valid ? '' : ' <span style="color:#dc2626">(缺少密码)</span>'}</span>
+                <input type="number" min="1" placeholder="跟随全局" data-idx="${a.index}"/>
+            </label>`).join('');
+
+        box.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+            cb.addEventListener('change', () => {
+                cb.closest('.acct').classList.toggle('checked', cb.checked);
+            });
+        });
+        box.querySelectorAll('input[type="number"]').forEach((ipt) => {
+            ipt.addEventListener('click', (e) => e.stopPropagation());
+        });
+    }
+
+    function setModeUI() {
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        $('#custom-area').style.display = mode === 'custom' ? '' : 'none';
+    }
+
+    function appendLogs(logs) {
+        const box = $('#log');
+        logs.forEach((l) => {
+            const span = document.createElement('span');
+            span.className = 'l-' + l.level;
+            span.textContent = `[${l.t}] ${l.text}\n`;
+            box.appendChild(span);
+        });
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function selectedIndices() {
+        return Array.from(document.querySelectorAll('.acct input[type="checkbox"]'))
+            .filter((c) => c.checked)
+            .map((c) => parseInt(c.dataset.idx, 10));
+    }
+
+    function perSteps() {
+        const steps = {};
+        document.querySelectorAll('.acct input[type="number"]').forEach((i) => {
+            const v = String(i.value || '').trim();
+            if (v) steps[i.dataset.idx] = parseInt(v, 10);
+        });
+        return steps;
+    }
+
+    async function pollJob() {
+        const job = await api('/api/job/' + state.jobId);
+        if (!job.ok) {
+            finish(false, job.error || '任务查询失败');
+            return;
+        }
+        appendLogs(job.logs.slice(state.rendered));
+        state.rendered = job.logs.length;
+        if (job.status === 'running') {
+            setTimeout(pollJob, 800);
+            return;
+        }
+        finish(job.status === 'done', job.summary);
+    }
+
+    function finish(ok, summary) {
+        state.running = false;
+        state.jobId = null;
+        $('#run').disabled = false;
+        $('#run').textContent = '立即修改步数';
+        const el = $('#summary');
+        el.textContent = summary || '';
+        el.className = 'summary ' + (ok ? 'ok' : 'bad');
+    }
+
+    async function run() {
+        if (state.running) return;
+        const indices = selectedIndices();
+        if (!indices.length) {
+            alert('请至少选择一个账号');
+            return;
+        }
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        const payload = { mode, indices, steps: perSteps(), global_step: parseInt($('#global-step').value, 10) };
+        if (mode === 'custom' && (!payload.global_step || payload.global_step < 1)) {
+            alert('请填写有效的步数');
+            return;
+        }
+        state.running = true;
+        $('#run').disabled = true;
+        $('#run').textContent = '执行中…';
+        $('#summary').textContent = '';
+        try {
+            const res = await api('/api/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                finish(false, res.error || '提交失败');
+                return;
+            }
+            state.jobId = res.job_id;
+            state.rendered = 0;
+            pollJob();
+        } catch (e) {
+            finish(false, '提交失败：' + e.message);
+        }
+    }
+
+    async function loadStatus() {
+        const data = await api('/api/status');
+        $('#b-source').textContent = '配置来源：' + data.config_source;
+        $('#b-time').textContent = '北京时间 ' + data.now;
+        $('#b-token').textContent = '登录态加密：' + (data.encrypt_support ? '已开启' : '未开启');
+        renderAccounts(data.accounts || []);
+        $('#global-step').value = data.default_step || 18000;
+        $('#range-hint').textContent = data.time_range
+            ? `当前时间按比例的随机范围：${data.time_range.min} ~ ${data.time_range.max} 步（北京时间22点达到配置的最大值）`
+            : '';
+        $('#banner').innerHTML = data.error
+            ? `<div class="alert err">${escapeHtml(data.error)}</div>`
+            : (data.accounts && data.accounts.some(a => !a.valid)
+                ? '<div class="alert warn">存在账号缺少密码，账号与密码数量需一一对应（# 分隔）</div>'
+                : '');
+    }
+
+    document.querySelectorAll('input[name="mode"]').forEach((r) => r.addEventListener('change', setModeUI));
+    document.querySelectorAll('.chip[data-step]').forEach((b) => {
+        b.addEventListener('click', () => {
+            $('#global-step').value = b.dataset.step;
+            document.querySelector('input[name="mode"][value="custom"]').checked = true;
+            setModeUI();
+        });
+    });
+    $('#rand-step').addEventListener('click', () => {
+        const min = 8000, max = 25000;
+        $('#global-step').value = Math.floor(min + Math.random() * (max - min));
+        document.querySelector('input[name="mode"][value="custom"]').checked = true;
+        setModeUI();
+    });
+    document.querySelectorAll('.chip[data-select]').forEach((b) => {
+        b.addEventListener('click', () => {
+            const on = b.dataset.select === 'all';
+            document.querySelectorAll('.acct input[type="checkbox"]').forEach((c) => {
+                c.checked = on;
+                c.closest('.acct').classList.toggle('checked', on);
+            });
+        });
+    });
+    $('#run').addEventListener('click', run);
+    $('#clear').addEventListener('click', () => { $('#log').innerHTML = ''; });
+
+    setModeUI();
+    loadStatus();
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+services:
+  mimotion-web:
+    build: .
+    image: mimotion-web:latest
+    container_name: mimotion-web
+    restart: unless-stopped
+    ports:
+      # 宿主机端口:容器端口，改左侧即可换端口（容器内固定 5000）
+      - "5000:5000"
+    # 复用仓库根目录的 .env（先执行 cp .env.example .env 并填写）
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Shanghai
+      PORT: "5000"
+      # 取消注释并设置口令后，页面需要登录才能访问（公网部署强烈建议开启）
+      # WEB_PASSWORD: "change-me"
+    volumes:
+      # 保证登录态(encrypted_tokens.data)持久化到宿主机，重建容器不丢失
+      - ./encrypted_tokens.data:/app/encrypted_tokens.data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5000/healthz').status==200 else 1)"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

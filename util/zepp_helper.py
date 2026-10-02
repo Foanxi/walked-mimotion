@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import re
 import time
@@ -5,6 +7,7 @@ import traceback
 import urllib
 import uuid
 from datetime import datetime
+from typing import Optional
 
 import pytz
 import requests
@@ -13,7 +16,7 @@ from util.aes_help import encrypt_data, HM_AES_KEY, HM_AES_IV
 
 
 # 通过账号密码获取access_token和refresh_token 但是refresh_token不知道怎么使用
-def login_access_token(user, password) -> (str | None, str | None):
+def login_access_token(user, password) -> (Optional[str], Optional[str]):
     headers = {
         "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
         "user-agent": "MiFit6.14.0 (M2007J1SC; Android 12; Density/2.75)",

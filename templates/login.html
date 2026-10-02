@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>登录 · mimotion</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+
+        .box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px;
+            width: 340px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, .2);
+        }
+
+        h1 { margin: 0 0 6px; font-size: 18px; }
+
+        p { margin: 0 0 18px; color: #7b8499; font-size: 12px; }
+
+        input {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #e6e9f2;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px #eef0ff; }
+
+        button {
+            width: 100%;
+            margin-top: 14px;
+            background: #4f46e5;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .err { color: #dc2626; font-size: 12px; margin-top: 10px; min-height: 16px; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h1>mimotion 步数修改</h1>
+    {% if need_password %}
+        <p>请输入访问口令（环境变量 WEB_PASSWORD）</p>
+        <form id="f">
+            <input type="password" id="pwd" placeholder="访问口令" autofocus/>
+            <button type="submit">进入</button>
+        </form>
+        <div class="err" id="err"></div>
+    {% else %}
+        <p>当前未设置访问口令，可直接进入</p>
+        <button onclick="location.href='/'">进入</button>
+    {% endif %}
+</div>
+<script>
+    const f = document.getElementById('f');
+    if (f) {
+        f.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({password: document.getElementById('pwd').value})
+            });
+            const data = await res.json();
+            if (data.ok) {
+                location.href = '/';
+            } else {
+                document.getElementById('err').textContent = data.error || '登录失败';
+            }
+        });
+    }
+</script>
+</body>
+</html>

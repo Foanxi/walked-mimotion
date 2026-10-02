@@ -1,0 +1,20 @@
+# 用于在容器内打包出 Linux 版本的单文件二进制，宿主机无需安装 Python / PyInstaller
+# 基于 Debian bullseye（glibc 2.31），产物可运行在 Ubuntu 20.04+ / Debian 11+ / CentOS 8+ 等
+FROM python:3.11-slim-bullseye
+
+# strip 需要 binutils，能显著减小产物体积
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends binutils \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+
+COPY requirements.txt requirements-build.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-build.txt
+
+COPY . .
+
+# 把宿主机的 dist 目录挂进来即可拿到产物：
+#   docker build -f Dockerfile.build -t mimotion-build .
+#   docker run --rm -v "$PWD/dist:/src/dist" mimotion-build
+CMD ["./build.sh"]
